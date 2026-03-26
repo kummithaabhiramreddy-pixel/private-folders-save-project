@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RAM SYSTEM | MASTER DATABASE</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    :root { --c1: #00f5ff; --c2: #ff00ff; --c3: #ffff00; --c4: #00ff88; --bg: #050510; }
+    body { background: var(--bg); color: #fff; font-family: 'Rajdhani', sans-serif; margin: 0; padding: 2rem; }
+    .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid var(--c1); padding-bottom: 1rem; margin-bottom: 2rem; }
+    .logo { font-family: 'Orbitron', monospace; font-size: 1.5rem; font-weight: 900; color: var(--c1); letter-spacing: 2px; }
+    .stats { display: flex; gap: 1rem; }
+    .stat-card { background: rgba(0, 245, 255, 0.05); border: 1px solid var(--c1); border-radius: 12px; padding: 1rem; text-align: center; min-width: 150px; }
+    .stat-val { font-family: 'Orbitron', monospace; font-size: 2rem; color: var(--c1); }
+    
+    .grid { display: flex; flex-direction: column; gap: 2rem; }
+    .section { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px; overflow: hidden; }
+    .sec-title { background: rgba(0, 245, 255, 0.1); padding: 15px 20px; font-family: 'Orbitron'; font-size: 0.9rem; color: var(--c1); border-bottom: 1px solid rgba(0, 245, 255, 0.2); }
+    
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; padding: 15px 20px; color: rgba(255,255,255,0.4); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; background: rgba(255,255,255,0.02); }
+    td { padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.95rem; }
+    
+    .owner-badge { background: rgba(0, 245, 255, 0.1); color: var(--c1); padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 0.8rem; }
+    .size-text { color: var(--c3); font-family: 'Orbitron', monospace; font-size: 0.85rem; }
+    .ext-badge { background: var(--bg); border: 1px solid var(--c2); color: var(--c2); padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 900; }
+    
+    .btn-back { padding: 10px 24px; background: var(--c1); color: #000; text-decoration: none; border-radius: 8px; font-family: 'Orbitron'; font-weight: bold; transition: 0.3s; }
+    
+    .empty-msg { text-align: center; padding: 60px; color: rgba(255,255,255,0.2); letter-spacing: 3px; font-family: 'Orbitron'; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="logo">RAM MASTER DATABASE (LIVE)</div>
+    <div class="stats">
+      <div class="stat-card"><div class="stat-val" id="uCount">0</div><div style="font-size:0.7rem; color:rgba(255,255,255,0.4)">TOTAL ACCOUNTS</div></div>
+      <div class="stat-card"><div class="stat-val" id="fCount">0</div><div style="font-size:0.7rem; color:rgba(255,255,255,0.4)">TOTAL DATABASE FILES</div></div>
+    </div>
+    <a href="index.html" class="btn-back">← CLOSE DATABASE</a>
+  </div>
+
+  <div class="grid">
+    <div class="section">
+      <div class="sec-title">🎯 ACTIVE SESSION DATA (Accounts & Emails)</div>
+      <table id="uTable">
+        <thead>
+          <tr>
+            <th>ACCOUNT EMAIL</th>
+            <th>SIGN-IN STATUS</th>
+            <th>FOLDER COUNT</th>
+            <th>FILES SAVED</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <div class="sec-title">📄 GLOBAL FILE REGISTRY (Detailed Detail)</div>
+      <table id="detailsTable">
+        <thead>
+          <tr>
+            <th>FILE NAME</th>
+            <th>EXT</th>
+            <th>SIZE</th>
+            <th>OWNER (EMAIL)</th>
+            <th>STORAGE PATH</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    let loadTimer = null;
+    function debouncedLoad() {
+      clearTimeout(loadTimer);
+      loadTimer = setTimeout(load, 200); // Wait for 200ms of silence before loading
+    }
+
+    function load() {
+      // Use DocumentFragments for performance
+      const ACCS_KEY = 'v3d_accounts';
+      const accs = JSON.parse(localStorage.getItem(ACCS_KEY) || '[]');
+      
+      const uTable = document.getElementById('uTable').querySelector('tbody');
+      const dTable = document.getElementById('detailsTable').querySelector('tbody');
+      
+      let uHtml = '';
+      let dHtml = '';
+      let globalFileCount = 0;
+      
+      document.getElementById('uCount').textContent = accs.length;
+
+      if (accs.length === 0) {
+        uTable.innerHTML = '<tr><td colspan="4" class="empty-msg">NO ACCOUNTS REGISTERED</td></tr>';
+        dTable.innerHTML = '<tr><td colspan="5" class="empty-msg">DATABASE IS EMPTY</td></tr>';
+        return;
+      }
+
+      accs.forEach(email => {
+        const meta = JSON.parse(localStorage.getItem('v3d_meta_' + email) || '{}');
+        const folders = Object.values(meta);
+        let userFileCount = 0;
+
+        folders.forEach(folder => {
+          if (!folder.files) return;
+          folder.files.forEach(file => {
+            userFileCount++;
+            globalFileCount++;
+            
+            // Limit detailed list to first 500 files to prevent browser hang
+            if (globalFileCount <= 500) {
+              const sizeFormatted = file.size ? (file.size / 1024).toFixed(1) + ' KB' : '0 KB';
+              dHtml += `
+                <tr>
+                  <td><b style="color:white">${file.name}</b></td>
+                  <td><span class="ext-badge">${file.ext || 'FILE'}</span></td>
+                  <td><span class="size-text">${sizeFormatted}</span></td>
+                  <td><span class="owner-badge">${email}</span></td>
+                  <td style="color:rgba(255,255,255,0.4); font-size:11px">${folder.path}</td>
+                </tr>
+              `;
+            }
+          });
+        });
+
+        uHtml += `
+          <tr>
+            <td><b style="color:var(--c1)">${email}</b></td>
+            <td><span style="color:var(--c4)">● ACTIVE</span></td>
+            <td>${folders.length} Folders</td>
+            <td><b style="color:var(--c1)">${userFileCount} Files</b></td>
+          </tr>
+        `;
+      });
+      
+      uTable.innerHTML = uHtml;
+      dTable.innerHTML = dHtml || '<tr><td colspan="5" class="empty-msg">NO FILES UPLOADED</td></tr>';
+      if (globalFileCount > 500) {
+        dTable.innerHTML += `<tr><td colspan="5" style="text-align:center; padding:10px; color:var(--c3)">+ ${globalFileCount - 500} MORE FILES (LOG HIDDEN FOR PERFORMANCE)</td></tr>`;
+      }
+      
+      document.getElementById('fCount').textContent = globalFileCount;
+    }
+    
+    // LIVE UPDATE SYSTEM: Debounced to prevent freezing
+    window.addEventListener('storage', (e) => {
+      if (e && e.key && e.key.startsWith('v3d_')) {
+        debouncedLoad();
+      }
+    });
+
+    // Refresh every 10 seconds (less aggressive)
+    setInterval(debouncedLoad, 10000);
+    
+    window.onload = load;
+  </script>
+</body>
+</html>
