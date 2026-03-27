@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>VAULT 3D - SECURE FILE MANAGER</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet" />
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{--c1:#00f5ff;--c2:#ff00ff;--c3:#ffff00;--c4:#00ff88;--c5:#ff4466;--bg:#050510}
+    html,body{min-height:100vh;background:var(--bg);color:white;font-family:'Rajdhani',sans-serif;overflow-x:hidden}
+    #particles{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0}
+    .scanlines{position:fixed;inset:0;pointer-events:none;z-index:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px)}
+
+    /* ── SIGN-IN PANEL (left side) ── */
+    #signPanel{position:fixed;left:0;top:0;height:100vh;width:72px;background:rgba(5,5,20,.96);border-right:1px solid rgba(0,245,255,.12);z-index:50;display:flex;flex-direction:column;align-items:center;padding:20px 0;gap:16px;transition:width .3s;overflow:hidden}
+    #signPanel:hover{width:220px}
+    #signPanel .panel-logo{font-family:'Orbitron',monospace;font-size:14px;font-weight:900;color:var(--c1);letter-spacing:2px;white-space:nowrap;overflow:hidden;width:100%;text-align:center;padding:0 10px}
+    .panel-divider{width:80%;height:1px;background:rgba(255,255,255,.08)}
+    .account-row{display:flex;align-items:center;gap:10px;width:100%;padding:8px 14px;cursor:pointer;transition:background .2s;position:relative;overflow:hidden}
+    .account-row:hover{background:rgba(0,245,255,.08)}
+    .account-row.active-acc{background:rgba(0,245,255,.12);border-left:2px solid var(--c1)}
+    .acc-avatar{width:38px;height:38px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'Orbitron',monospace;font-size:13px;font-weight:700;border:1.5px solid}
+    .acc-info{opacity:0;pointer-events:none;white-space:nowrap;transition:opacity .2s;min-width:130px}
+    #signPanel:hover .acc-info{opacity:1}
+    .acc-email{font-size:11px;color:rgba(255,255,255,.8);overflow:hidden;text-overflow:ellipsis;max-width:130px}
+    .acc-status{font-size:9px;letter-spacing:1px;font-family:'Orbitron',monospace;color:var(--c4)}
+    .acc-status.offline{color:rgba(255,255,255,.3)}
+    .add-account-btn{display:flex;align-items:center;gap:10px;width:100%;padding:8px 14px;cursor:pointer;transition:background .2s;color:rgba(255,255,255,.35);font-size:12px;font-family:'Orbitron',monospace;letter-spacing:1px}
+    .add-account-btn:hover{background:rgba(255,255,255,.05);color:var(--c2)}
+    .add-account-btn .add-icon{width:38px;height:38px;border-radius:50%;border:1.5px dashed rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+    .add-acc-label{opacity:0;pointer-events:none;white-space:nowrap;transition:opacity .2s}
+    #signPanel:hover .add-acc-label{opacity:1}
+
+    /* Sign-in modal */
+    .signin-overlay{position:fixed;inset:0;background:rgba(5,5,16,.9);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(10px);animation:fadeIn .2s}
+    .signin-box{background:#0a0a22;border:1px solid rgba(0,245,255,.3);border-radius:24px;padding:36px 32px;max-width:400px;width:100%;text-align:center;box-shadow:0 0 80px rgba(0,245,255,.1),0 40px 100px rgba(0,0,0,.7);animation:modalIn .3s cubic-bezier(.34,1.56,.64,1)}
+    .signin-logo{font-family:'Orbitron',monospace;font-size:22px;font-weight:900;background:linear-gradient(90deg,var(--c1),var(--c2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:6px}
+    .signin-sub{font-size:12px;color:rgba(255,255,255,.3);letter-spacing:2px;margin-bottom:28px}
+    .signin-input{width:100%;padding:13px 16px;background:rgba(255,255,255,.05);border:1px solid rgba(0,245,255,.25);border-radius:12px;color:white;font-size:14px;font-family:'Rajdhani',sans-serif;outline:none;transition:all .3s;margin-bottom:12px}
+    .signin-input:focus{border-color:var(--c1);box-shadow:0 0 16px rgba(0,245,255,.2)}
+    .signin-input::placeholder{color:rgba(255,255,255,.25)}
+    .signin-btn{width:100%;padding:13px;border-radius:12px;border:1px solid var(--c1);background:rgba(0,245,255,.1);color:var(--c1);font-family:'Orbitron',monospace;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:2px;transition:all .3s;margin-bottom:10px}
+    .signin-btn:hover{background:rgba(0,245,255,.22);box-shadow:0 0 22px rgba(0,245,255,.3)}
+    .signin-cancel{font-size:11px;color:rgba(255,255,255,.3);cursor:pointer;letter-spacing:1px;font-family:'Orbitron',monospace;transition:color .2s}
+    .signin-cancel:hover{color:rgba(255,255,255,.6)}
+    .signin-err{color:#ff4466;font-size:11px;letter-spacing:1px;margin-bottom:10px;min-height:16px}
+
+    /* ── MAIN APP ── */
+    .app{position:relative;z-index:1;padding:32px 24px 60px;max-width:1100px;margin:0 auto 0 72px;transition:margin-left .3s}
+    .welcome-bar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:24px;padding:12px 20px;background:rgba(0,245,255,.04);border:1px solid rgba(0,245,255,.12);border-radius:14px}
+    .welcome-text{font-family:'Orbitron',monospace;font-size:11px;color:var(--c1);letter-spacing:2px}
+    .welcome-email{color:white;font-size:13px}
+    .signout-btn{font-family:'Orbitron',monospace;font-size:10px;padding:6px 14px;border-radius:8px;border:1px solid rgba(255,68,102,.4);background:rgba(255,68,102,.08);color:#ff4466;cursor:pointer;letter-spacing:1px;transition:all .2s}
+    .signout-btn:hover{background:rgba(255,68,102,.2)}
+    h1{font-family:'Orbitron',monospace;font-size:clamp(20px,4vw,34px);font-weight:900;background:linear-gradient(90deg,var(--c1),var(--c2),var(--c3),var(--c4));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center;letter-spacing:6px;margin-bottom:6px;animation:hueShift 4s linear infinite}
+    @keyframes hueShift{0%,100%{filter:hue-rotate(0deg)}50%{filter:hue-rotate(60deg)}}
+    .subtitle{text-align:center;color:rgba(255,255,255,.3);font-size:11px;letter-spacing:4px;margin-bottom:28px}
+    .stats-bar{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:24px}
+    .stat-chip{background:rgba(255,255,255,.04);border:1px solid rgba(0,245,255,.22);border-radius:40px;padding:7px 20px;font-size:11px;font-weight:600;color:var(--c1);letter-spacing:2px}
+    .stat-chip span{color:white;font-size:18px;font-family:'Orbitron',monospace;margin-left:5px}
+
+    /* ── UPLOAD CONTROLS ── */
+    .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:24px}
+    .search-wrap{flex:1;min-width:160px;position:relative}
+    .search-wrap input{width:100%;padding:10px 40px 10px 15px;background:rgba(0,245,255,.05);border:1px solid rgba(0,245,255,.25);border-radius:12px;color:white;font-size:14px;font-family:'Rajdhani',sans-serif;outline:none;transition:all .3s}
+    .search-wrap input:focus{border-color:var(--c1);box-shadow:0 0 16px rgba(0,245,255,.2)}
+    .search-wrap input::placeholder{color:rgba(255,255,255,.25)}
+    .search-icon{position:absolute;right:12px;top:50%;transform:translateY(-50%);opacity:.4;pointer-events:none}
+
+    /* Active upload buttons (signed in) */
+    .upload-btn{padding:10px 20px;border-radius:12px;border:1px solid var(--c2);background:rgba(255,0,255,.08);color:var(--c2);font-family:'Orbitron',monospace;font-size:10px;font-weight:700;cursor:pointer;letter-spacing:1px;transition:all .3s;white-space:nowrap}
+    .upload-btn:hover{background:rgba(255,0,255,.22);box-shadow:0 0 20px rgba(255,0,255,.3);transform:translateY(-2px)}
+    .upload-btn.green{border-color:var(--c4);color:var(--c4);background:rgba(0,255,136,.07)}
+    .upload-btn.green:hover{background:rgba(0,255,136,.18);box-shadow:0 0 20px rgba(0,255,136,.3)}
+
+    /* Locked upload buttons (not signed in) */
+    .upload-btn-locked{padding:10px 20px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.04);color:rgba(255,255,255,.3);font-family:'Orbitron',monospace;font-size:10px;font-weight:700;cursor:pointer;letter-spacing:1px;transition:all .3s;white-space:nowrap;position:relative}
+    .upload-btn-locked:hover{border-color:rgba(0,245,255,.35);color:rgba(0,245,255,.7);background:rgba(0,245,255,.07)}
+    .upload-btn-locked .lock-icon{margin-right:5px;font-size:11px}
+
+    #fileInput,#folderInput{display:none}
+
+    /* No-login overlay */
+    #noLoginScreen{position:absolute;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;text-align:center;background:rgba(5,5,16,.7);backdrop-filter:blur(4px);border-radius:20px}
+    .nls-icon{font-size:64px;margin-bottom:20px}
+    .nls-title{font-family:'Orbitron',monospace;font-size:16px;color:var(--c1);letter-spacing:3px;margin-bottom:10px}
+    .nls-sub{font-size:13px;color:rgba(255,255,255,.35);letter-spacing:1px;line-height:1.8;margin-bottom:24px}
+    .nls-btn{padding:12px 28px;border-radius:12px;border:1px solid var(--c1);background:rgba(0,245,255,.1);color:var(--c1);font-family:'Orbitron',monospace;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:2px;transition:all .3s}
+    .nls-btn:hover{background:rgba(0,245,255,.22);box-shadow:0 0 22px rgba(0,245,255,.3)}
+
+    /* Signin prompt toast-style banner */
+    #signInPromptBanner{display:none;align-items:center;justify-content:space-between;gap:12px;padding:12px 20px;margin-bottom:18px;background:rgba(0,245,255,.04);border:1px solid rgba(0,245,255,.25);border-radius:14px;animation:fadeIn .3s}
+    #signInPromptBanner.visible{display:flex}
+    .sib-text{font-family:'Orbitron',monospace;font-size:11px;color:rgba(255,255,255,.55);letter-spacing:1px}
+    .sib-text strong{color:var(--c1)}
+    .sib-btn{padding:8px 18px;border-radius:9px;border:1px solid var(--c1);background:rgba(0,245,255,.1);color:var(--c1);font-family:'Orbitron',monospace;font-size:10px;font-weight:700;cursor:pointer;letter-spacing:1px;transition:all .2s;white-space:nowrap;flex-shrink:0}
+    .sib-btn:hover{background:rgba(0,245,255,.22);box-shadow:0 0 16px rgba(0,245,255,.3)}
+
+    /* Grid */
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:18px;position:relative;min-height:200px}
+    .folder-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:20px 16px 16px;cursor:pointer;transition:all .35s cubic-bezier(.34,1.56,.64,1);animation:cardIn .5s both;position:relative;overflow:hidden;user-select:none}
+    @keyframes cardIn{from{opacity:0;transform:translateY(28px) scale(.88)}to{opacity:1;transform:translateY(0) scale(1)}}
+    .folder-card::before{content:'';position:absolute;inset:0;border-radius:18px;background:linear-gradient(135deg,transparent,rgba(255,255,255,.02));pointer-events:none}
+    .folder-card:hover{transform:translateY(-8px) rotateX(3deg) scale(1.03);border-color:rgba(0,245,255,.4);box-shadow:0 20px 50px rgba(0,0,0,.5),0 0 28px var(--accent,rgba(0,245,255,.2))}
+    .folder-card.highlight{border-color:var(--c3)!important;box-shadow:0 0 32px rgba(255,255,0,.4),0 0 64px rgba(255,255,0,.12)!important;animation:pulseHL 1.2s ease-out}
+    @keyframes pulseHL{0%{transform:scale(1.08)}60%{transform:scale(.97)}100%{transform:scale(1)}}
+    .folder-card.removing{animation:cardOut .4s forwards!important;pointer-events:none}
+    @keyframes cardOut{to{opacity:0;transform:scale(.6) translateY(30px)}}
+    .folder-icon-wrap{width:62px;height:54px;margin:0 auto 14px}
+    .folder-icon-wrap svg{width:100%;height:100%;filter:drop-shadow(0 0 8px var(--icon-glow,rgba(0,245,255,.5)));transition:filter .3s}
+    .folder-card:hover .folder-icon-wrap svg{filter:drop-shadow(0 0 18px var(--icon-glow,rgba(0,245,255,.85)))}
+    .folder-name{font-family:'Orbitron',monospace;font-size:10px;font-weight:700;text-align:center;color:white;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .file-count{text-align:center;font-size:11px;color:rgba(255,255,255,.38);letter-spacing:1px}
+    .file-count span{color:var(--c1);font-weight:700;font-size:15px}
+    .sub-badge{display:block;text-align:center;margin-top:4px;font-size:9px;color:rgba(255,200,0,.65);letter-spacing:1px;font-family:'Orbitron',monospace}
+    .color-bar{height:2px;border-radius:2px;margin-top:12px;background:linear-gradient(90deg,var(--bar1,#00f5ff),var(--bar2,#ff00ff));box-shadow:0 0 6px var(--bar1,#00f5ff);transform-origin:left;animation:barGrow .6s both .2s}
+    @keyframes barGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+    .rclick-hint{text-align:center;margin-top:7px;font-size:8px;color:rgba(255,255,255,.12);letter-spacing:1px;font-family:'Orbitron',monospace}
+    .empty-state{grid-column:1/-1;text-align:center;padding:70px 20px;color:rgba(255,255,255,.16)}
+    .empty-state .big{font-size:64px;margin-bottom:16px}
+    .empty-state p{font-family:'Orbitron',monospace;font-size:11px;letter-spacing:3px;line-height:2.2}
+
+    /* Right-click context menu */
+    #ctxMenu{position:fixed;z-index:500;min-width:200px;background:#08081e;border:1px solid rgba(0,245,255,.25);border-radius:14px;padding:6px;box-shadow:0 10px 40px rgba(0,0,0,.8),0 0 20px rgba(0,245,255,.1);display:none;animation:menuIn .14s ease-out}
+    @keyframes menuIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+    .ctx-item{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:8px;font-family:'Orbitron',monospace;font-size:10px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .18s;color:rgba(255,255,255,.65)}
+    .ctx-item:hover{background:rgba(0,245,255,.1);color:var(--c1)}
+    .ctx-item.danger:hover{background:rgba(255,0,60,.15);color:#ff4466}
+    .ctx-icon{font-size:14px}
+    .ctx-divider{height:1px;background:rgba(255,255,255,.06);margin:3px 0}
+
+    /* Folder modal */
+    .modal-overlay{position:fixed;inset:0;background:rgba(5,5,16,.88);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px);animation:fadeIn .2s}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    .modal{background:#080818;border:1px solid rgba(0,245,255,.25);border-radius:22px;padding:26px;max-width:600px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 0 60px rgba(0,245,255,.1),0 30px 80px rgba(0,0,0,.7);animation:modalIn .3s cubic-bezier(.34,1.56,.64,1)}
+    @keyframes modalIn{from{transform:scale(.8) translateY(20px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+    .modal::-webkit-scrollbar{width:4px}
+    .modal::-webkit-scrollbar-thumb{background:rgba(0,245,255,.2);border-radius:4px}
+    .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+    .modal-title{font-family:'Orbitron',monospace;font-size:13px;font-weight:700;color:var(--c1);letter-spacing:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:calc(100% - 46px)}
+    .modal-close{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:white;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
+    .modal-close:hover{background:rgba(255,0,0,.15);border-color:rgba(255,80,80,.5)}
+    .modal-path{font-size:10px;color:rgba(255,255,255,.25);letter-spacing:1px;margin-bottom:16px}
+    .back-btn{display:inline-flex;align-items:center;gap:6px;margin-bottom:12px;padding:5px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(255,255,255,.5);font-size:10px;font-family:'Orbitron',monospace;letter-spacing:1px;cursor:pointer;transition:all .2s}
+    .back-btn:hover{background:rgba(0,245,255,.08);border-color:rgba(0,245,255,.3);color:var(--c1)}
+    .section-label{font-family:'Orbitron',monospace;font-size:9px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,.3);margin:14px 0 7px;border-bottom:1px solid rgba(255,255,255,.05);padding-bottom:5px}
+    .subfolder-item{display:flex;align-items:center;gap:10px;padding:9px 12px;background:rgba(255,200,0,.05);border-radius:10px;border:1px solid rgba(255,200,0,.1);font-size:12px;animation:fileIn .3s both;cursor:pointer;transition:all .2s;margin-bottom:7px}
+    .subfolder-item:hover{background:rgba(255,200,0,.09);border-color:rgba(255,200,0,.3)}
+    .sf-name{flex:1;color:rgba(255,220,80,.9);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .sf-count{color:rgba(255,200,0,.45);font-size:10px;white-space:nowrap;font-family:'Orbitron',monospace}
+    .file-list{display:flex;flex-direction:column;gap:7px}
+    .file-item{display:flex;align-items:center;gap:10px;padding:9px 12px;background:rgba(255,255,255,.04);border-radius:10px;border:1px solid rgba(255,255,255,.05);font-size:12px;animation:fileIn .3s both;cursor:pointer;transition:all .2s;position:relative}
+    @keyframes fileIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
+    .file-item:hover{background:rgba(0,245,255,.06);border-color:rgba(0,245,255,.2)}
+    .file-type-badge{padding:2px 8px;border-radius:5px;font-size:9px;font-weight:700;font-family:'Orbitron',monospace;letter-spacing:.5px;text-transform:uppercase;min-width:42px;text-align:center;flex-shrink:0}
+    .file-name{flex:1;color:rgba(255,255,255,.78);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .file-size{color:rgba(255,255,255,.28);font-size:10px;white-space:nowrap;flex-shrink:0}
+    .file-dl-btn{width:26px;height:26px;border-radius:6px;border:1px solid rgba(0,245,255,.25);background:rgba(0,245,255,.07);color:var(--c1);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
+    .file-dl-btn:hover{background:rgba(0,245,255,.2);box-shadow:0 0 10px rgba(0,245,255,.3)}
+    .no-files{text-align:center;color:rgba(255,255,255,.22);padding:22px;font-size:11px;letter-spacing:2px;font-family:'Orbitron',monospace}
+
+    /* File preview modal */
+    .preview-overlay{position:fixed;inset:0;background:rgba(3,3,12,.94);z-index:600;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(12px);animation:fadeIn .2s}
+    .preview-box{background:#07071a;border:1px solid rgba(0,245,255,.2);border-radius:20px;width:min(820px,96vw);max-height:90vh;display:flex;flex-direction:column;box-shadow:0 0 80px rgba(0,245,255,.08),0 40px 100px rgba(0,0,0,.8);animation:modalIn .3s cubic-bezier(.34,1.56,.64,1)}
+    .preview-header{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0}
+    .preview-filename{font-family:'Orbitron',monospace;font-size:12px;color:white;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .preview-dl{padding:7px 16px;border-radius:8px;border:1px solid var(--c4);background:rgba(0,255,136,.08);color:var(--c4);font-family:'Orbitron',monospace;font-size:10px;font-weight:700;cursor:pointer;letter-spacing:1px;transition:all .2s;white-space:nowrap;flex-shrink:0}
+    .preview-dl:hover{background:rgba(0,255,136,.2);box-shadow:0 0 14px rgba(0,255,136,.3)}
+    .preview-close{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:white;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
+    .preview-close:hover{background:rgba(255,0,0,.15)}
+    .preview-content{flex:1;overflow:auto;padding:20px}
+    .preview-content::-webkit-scrollbar{width:5px}
+    .preview-content::-webkit-scrollbar-thumb{background:rgba(0,245,255,.2);border-radius:4px}
+    .preview-text{font-family:'Courier New',monospace;font-size:13px;color:rgba(255,255,255,.82);white-space:pre-wrap;word-break:break-word;line-height:1.7}
+    .preview-img{max-width:100%;max-height:60vh;display:block;margin:0 auto;border-radius:8px}
+    .preview-video{width:100%;max-height:60vh;border-radius:8px}
+    .preview-audio{width:100%;margin-top:20px}
+    .preview-iframe{width:100%;height:65vh;border:none;border-radius:8px}
+    .preview-noview{text-align:center;padding:60px 20px;color:rgba(255,255,255,.3)}
+    .preview-noview .pn-icon{font-size:56px;margin-bottom:16px}
+    .preview-noview p{font-family:'Orbitron',monospace;font-size:11px;letter-spacing:2px;line-height:2}
+
+    /* Confirm delete */
+    .confirm-overlay{position:fixed;inset:0;background:rgba(5,5,16,.88);z-index:700;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px);animation:fadeIn .2s}
+    .confirm-box{background:#0c0c24;border:1px solid rgba(255,0,60,.45);border-radius:20px;padding:30px 26px;max-width:360px;width:100%;text-align:center;box-shadow:0 0 50px rgba(255,0,60,.15),0 30px 80px rgba(0,0,0,.7);animation:modalIn .3s cubic-bezier(.34,1.56,.64,1)}
+    .confirm-icon{font-size:44px;margin-bottom:14px}
+    .confirm-title{font-family:'Orbitron',monospace;font-size:13px;font-weight:700;color:#ff4466;letter-spacing:2px;margin-bottom:7px}
+    .confirm-name{font-family:'Orbitron',monospace;font-size:15px;font-weight:900;color:white;margin-bottom:5px}
+    .confirm-sub{font-size:11px;color:rgba(255,255,255,.3);letter-spacing:1px;margin-bottom:24px}
+    .confirm-btns{display:flex;gap:10px;justify-content:center}
+    .btn-cancel{padding:9px 22px;border-radius:9px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.05);color:rgba(255,255,255,.55);font-family:'Orbitron',monospace;font-size:10px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:1px}
+    .btn-cancel:hover{background:rgba(255,255,255,.1)}
+    .btn-delete{padding:9px 22px;border-radius:9px;border:1px solid rgba(255,0,60,.55);background:rgba(255,0,60,.12);color:#ff4466;font-family:'Orbitron',monospace;font-size:10px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:1px}
+    .btn-delete:hover{background:rgba(255,0,60,.25);box-shadow:0 0 14px rgba(255,0,60,.3)}
+
+    /* Toast */
+    #toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(50px);background:#0c0c24;border:1px solid rgba(0,245,255,.3);border-radius:40px;padding:11px 26px;font-family:'Orbitron',monospace;font-size:10px;letter-spacing:2px;color:var(--c1);z-index:2000;transition:transform .4s cubic-bezier(.34,1.56,.64,1),opacity .4s;opacity:0;pointer-events:none;white-space:nowrap;box-shadow:0 0 20px rgba(0,245,255,.2)}
+    #toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+    #toast.err{border-color:rgba(255,0,60,.4);color:#ff4466;box-shadow:0 0 20px rgba(255,0,60,.2)}
+    .privacy-notice{background:rgba(0,245,255,.04);border:1px solid rgba(0,245,255,.12);border-radius:12px;padding:12px 16px;margin-bottom:20px;font-size:11px;color:rgba(255,255,255,.5);letter-spacing:1px;line-height:1.6}
+    .privacy-notice strong{color:var(--c1)}
+  </style>
+</head>
+<body>
+  <canvas id="particles"></canvas>
+  <div class="scanlines"></div>
+
+  <!-- SIGN-IN MODAL -->
+  <div id="signinOverlay" class="signin-overlay" style="display:none">
+    <div class="signin-box">
+      <div class="signin-logo">VAULT 3D</div>
+      <div class="signin-sub">SIGN IN OR CREATE ACCOUNT</div>
+      <div class="signin-err" id="signinErr"></div>
+      <input class="signin-input" id="signinEmail" type="email" placeholder="Email address" />
+      <input class="signin-input" id="signinPass" type="password" placeholder="Password (min 4 chars)" />
+      <button class="signin-btn" onclick="doSignIn()">SIGN IN / CREATE ACCOUNT</button>
+      <div class="signin-cancel" onclick="hideSignIn()">CANCEL</div>
+    </div>
+  </div>
+
+  <!-- MAIN APP -->
+  <div class="app" id="mainApp">
+
+    <!-- Welcome bar (shown only when signed in) -->
+    <div class="welcome-bar" id="welcomeBar" style="display:none">
+      <div>
+        <div class="welcome-text">SIGNED IN AS</div>
+        <div class="welcome-email" id="welcomeEmail">—</div>
+      </div>
+      <button class="signout-btn" onclick="signOut()">SIGN OUT</button>
+    </div>
+
+    <h1>KUMMITHA ABHIRAM REDDY</h1>
+    <p class="subtitle">RAM FOLDER MANAGEMENT SYSTEM</p>
+
+    <div class="privacy-notice" id="privacyNotice" style="display:none">
+      <strong>🔒 PRIVACY NOTICE:</strong> Your files are completely private. Each email account has separate, isolated storage. Other users cannot see your files, and you cannot see theirs.
+    </div>
+
+    <!-- Sign-in prompt banner (shown when not signed in, user tries upload) -->
+    <div id="signInPromptBanner">
+      <div class="sib-text">🔐 <strong>SIGN IN REQUIRED</strong> — Please sign in or create an account to upload files &amp; folders.</div>
+      <button class="sib-btn" onclick="showSignIn()">SIGN IN NOW</button>
+    </div>
+
+    <div class="stats-bar">
+      <div class="stat-chip">FOLDERS <span id="statFolders">0</span></div>
+      <div class="stat-chip">FILES <span id="statFiles">0</span></div>
+      <div class="stat-chip">SIZE <span id="statSize">0 B</span></div>
+    </div>
+
+    <div class="controls">
+      <div class="search-wrap">
+        <input type="text" id="searchInput" placeholder="Search folders…" oninput="handleSearch()" />
+        <span class="search-icon">⌕</span>
+      </div>
+
+      <!-- Upload Files button: active when signed in, locked when not -->
+      <button id="btnUploadFiles" class="upload-btn-locked" onclick="handleUploadFilesClick()">
+        <span class="lock-icon">🔒</span>UPLOAD FILES
+      </button>
+      <input type="file" id="fileInput" multiple onchange="handleLooseFiles(event)" />
+
+      <!-- Upload Folder button: active when signed in, locked when not -->
+      <button id="btnUploadFolder" class="upload-btn-locked green" onclick="handleUploadFolderClick()">
+        <span class="lock-icon">🔒</span>📁 FOLDER
+      </button>
+      <input type="file" id="folderInput" webkitdirectory directory multiple onchange="handleFolderUpload(event)" />
+    </div>
+
+    <div style="position:relative;">
+      <div class="grid" id="grid"></div>
+      <!-- NO LOGIN SCREEN overlays the grid when not signed in -->
+      <div id="noLoginScreen">
+        <div class="nls-icon">🔐</div>
+        <div class="nls-title">SIGN IN REQUIRED</div>
+        <div class="nls-sub">Sign in or create an account to upload,<br>view and manage your folders securely.</div>
+        <button class="nls-btn" onclick="showSignIn()">SIGN IN / CREATE ACCOUNT</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT-CLICK CONTEXT MENU -->
+  <div id="ctxMenu">
+    <div class="ctx-item" id="ctxOpen"><span class="ctx-icon">📂</span> OPEN FOLDER</div>
+    <div class="ctx-divider"></div>
+    <div class="ctx-item" id="ctxDownload"><span class="ctx-icon">⬇</span> DOWNLOAD ALL FILES</div>
+    <div class="ctx-divider"></div>
+    <div class="ctx-item danger" id="ctxDelete"><span class="ctx-icon">🗑</span> REMOVE FOLDER</div>
+  </div>
+
+  <!-- FOLDER DETAIL MODAL -->
+  <div id="modalOverlay" class="modal-overlay" style="display:none" onclick="overlayClick(event)">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="modalTitle">FOLDER</span>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-path" id="modalPath"></div>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <!-- FILE PREVIEW MODAL -->
+  <div id="previewOverlay" class="preview-overlay" style="display:none">
+    <div class="preview-box">
+      <div class="preview-header">
+        <span class="preview-filename" id="previewName"></span>
+        <button class="preview-dl" id="previewDlBtn">⬇ DOWNLOAD</button>
+        <button class="preview-close" onclick="closePreview()">✕</button>
+      </div>
+      <div class="preview-content" id="previewContent"></div>
+    </div>
+  </div>
+
+  <!-- CONFIRM DELETE -->
+  <div id="confirmOverlay" class="confirm-overlay" style="display:none">
+    <div class="confirm-box">
+      <div class="confirm-icon">🗑</div>
+      <div class="confirm-title">REMOVE FOLDER</div>
+      <div class="confirm-name" id="confirmName"></div>
+      <div class="confirm-sub" id="confirmSub"></div>
+      <div class="confirm-btns">
+        <button class="btn-cancel" onclick="hideConfirm()">CANCEL</button>
+        <button class="btn-delete" onclick="confirmDelete()">DELETE</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+    /* ═══════════ STORAGE KEY CONSTANTS (previously missing!) ═══════════ */
+    const USERS_KEY   = 'v3d_users';           // all registered users map {email: hash}
+    const ACCS_KEY    = 'v3d_accounts';         // ordered accounts list []
+    const ACTIVE_KEY  = 'v3d_active';           // currently active email string
+    const PALIDX_KEY  = u => `v3d_pal_${u}`;   // palette index per user
+    const META_KEY    = u => `v3d_meta_${u}`;
+    const ROOTS_KEY   = u => `v3d_roots_${u}`;
+    const FILES_KEY   = u => `v3d_files_${u}`;
+
+    // BACKEND API BASE
+    let API_BASE = localStorage.getItem('v3d_api_base') || (location.hostname !== 'localhost' && location.hostname !== '127.0.0.1' && location.hostname !== '' 
+        ? `http://${location.hostname}:3001` 
+        : 'http://localhost:3001');
+
+    function updateApiBase() {
+      const current = API_BASE.replace('http://', '').split(':')[0] || 'localhost';
+      const ip = prompt("Enter your computer's IP address (e.g., 192.168.1.5):", current);
+      if (ip) {
+        const newBase = `http://${ip.trim()}:3001`;
+        localStorage.setItem('v3d_api_base', newBase);
+        API_BASE = newBase;
+        location.reload();
+      }
+    }
+
+    const PALETTES = [
+      {icon:'#00f5ff',bg:'rgba(0,245,255,0.12)',bar1:'#00f5ff',bar2:'#0080ff',glow:'rgba(0,245,255,0.5)'},
+      {icon:'#ff00ff',bg:'rgba(255,0,255,0.12)',bar1:'#ff00ff',bar2:'#8800ff',glow:'rgba(255,0,255,0.5)'},
+      {icon:'#ffff00',bg:'rgba(255,255,0,0.12)',bar1:'#ffff00',bar2:'#ff8800',glow:'rgba(255,255,0,0.5)'},
+      {icon:'#00ff88',bg:'rgba(0,255,136,0.12)',bar1:'#00ff88',bar2:'#00ccff',glow:'rgba(0,255,136,0.5)'},
+      {icon:'#ff4466',bg:'rgba(255,68,102,0.12)',bar1:'#ff4466',bar2:'#ff8800',glow:'rgba(255,68,102,0.5)'},
+      {icon:'#aa44ff',bg:'rgba(170,68,255,0.12)',bar1:'#aa44ff',bar2:'#ff00cc',glow:'rgba(170,68,255,0.5)'},
+    ];
+
+    /* ═══════════ STATE ═══════════ */
+    let currentUser = null;
+    let folders     = {};
+    let rootKeys    = [];
+    let fileStore   = {};
+    let palIdx      = 0;
+
+    function nextPal(){
+      const p=PALETTES[palIdx%PALETTES.length]; palIdx++;
+      if(currentUser) localStorage.setItem(PALIDX_KEY(currentUser), palIdx);
+      return p;
+    }
+
+    /* ═══════════ SIMPLE HASH ═══════════ */
+    function simpleHash(str){
+      let h=0;
+      for(let i=0;i<str.length;i++){h=(Math.imul(31,h)+str.charCodeAt(i))|0;}
+      return h.toString(16);
+    }
+
+    /* ═══════════ ACCOUNT HELPERS ═══════════ */
+    function getUsers(){ try{return JSON.parse(localStorage.getItem(USERS_KEY)||'{}')}catch{return{}} }
+    function getAccounts(){ try{return JSON.parse(localStorage.getItem(ACCS_KEY)||'[]')}catch{return[]} }
+
+    /* ═══════════ UPLOAD BUTTON STATE ═══════════ */
+    // Swap upload buttons between locked (not signed in) and active (signed in) styles
+    function updateUploadButtons(){
+      const btnF = document.getElementById('btnUploadFiles');
+      const btnD = document.getElementById('btnUploadFolder');
+      if(currentUser){
+        btnF.className = 'upload-btn';
+        btnF.innerHTML = '+ UPLOAD FILES';
+        btnD.className = 'upload-btn green';
+        btnD.innerHTML = '📁 FOLDER';
+      } else {
+        btnF.className = 'upload-btn-locked';
+        btnF.innerHTML = '<span class="lock-icon">🔒</span>UPLOAD FILES';
+        btnD.className = 'upload-btn-locked';
+        btnD.innerHTML = '<span class="lock-icon">🔒</span>📁 FOLDER';
+      }
+    }
+
+    function handleUploadFilesClick(){
+      if(!currentUser){
+        // Flash the banner and open sign-in modal
+        const banner = document.getElementById('signInPromptBanner');
+        banner.classList.add('visible');
+        showSignIn();
+        return;
+      }
+      document.getElementById('fileInput').click();
+    }
+
+    function handleUploadFolderClick(){
+      if(!currentUser){
+        const banner = document.getElementById('signInPromptBanner');
+        banner.classList.add('visible');
+        showSignIn();
+        return;
+      }
+      document.getElementById('folderInput').click();
+    }
+
+    /* ═══════════ SIGN IN / OUT ═══════════ */
+    async function doSignIn(){
+      const email = (document.getElementById('signinEmail').value||'').trim().toLowerCase();
+      const pass  = (document.getElementById('signinPass').value||'').trim();
+      const err   = document.getElementById('signinErr');
+      if(!email||!email.includes('@')){ err.textContent='ENTER A VALID EMAIL'; return; }
+      if(pass.length<4){ err.textContent='PASSWORD MUST BE 4+ CHARS'; return; }
+      
+      const hash  = simpleHash(pass);
+      const btn = document.querySelector('.signin-btn');
+      const oldTxt = btn.textContent;
+      btn.textContent = 'CONNECTING...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/vault/auth`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, hash })
+        });
+        
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'AUTH FAILED');
+        }
+        
+        const data = await res.json();
+        
+        // Sync local caches
+        const users = getUsers();
+        users[email] = hash;
+        localStorage.setItem(USERS_KEY, JSON.stringify(users));
+        
+        const accs = getAccounts();
+        if(!accs.includes(email)){ accs.push(email); localStorage.setItem(ACCS_KEY, JSON.stringify(accs)); }
+        localStorage.setItem(ACTIVE_KEY, email);
+
+        if (data.status === 'new') {
+          showToast('✓ NEW ACCOUNT CREATED: '+email.toUpperCase());
+        } else {
+          showToast('✓ CONNECTED TO VAULT: '+email.toUpperCase());
+        }
+
+        hideSignIn();
+        await switchUser(email);
+        
+      } catch (e) {
+        err.textContent = e.message.toUpperCase();
+        console.error(e);
+      } finally {
+        btn.textContent = oldTxt;
+        btn.disabled = false;
+      }
+    }
+
+    function signOut(){
+      localStorage.removeItem(ACTIVE_KEY);
+      currentUser=null; folders={}; rootKeys=[]; fileStore={};
+      document.getElementById('welcomeBar').style.display='none';
+      document.getElementById('privacyNotice').style.display='none';
+      document.getElementById('noLoginScreen').style.display='flex';
+      // Hide banner on sign out
+      document.getElementById('signInPromptBanner').classList.remove('visible');
+      updateUploadButtons();
+      renderAccountList();
+      refresh();
+    }
+
+    async function switchUser(email){
+      currentUser = email;
+      localStorage.setItem(ACTIVE_KEY, email);
+      
+      // Try load from backend first
+      try {
+        const res = await fetch(`${API_BASE}/api/vault/load?email=${encodeURIComponent(email)}`);
+        if (res.ok) {
+          const data = await res.json();
+          folders = data.folders || {};
+          rootKeys = data.rootKeys || [];
+          fileStore = data.fileStore || {};
+          palIdx = data.palIdx || 0;
+          
+          // Cache locally
+          localStorage.setItem(META_KEY(email), JSON.stringify(folders));
+          localStorage.setItem(ROOTS_KEY(email), JSON.stringify(rootKeys));
+          localStorage.setItem(FILES_KEY(email), JSON.stringify(fileStore));
+          localStorage.setItem(PALIDX_KEY(email), palIdx);
+        } else {
+          throw new Error('Fallback to local');
+        }
+      } catch (e) {
+        console.warn('Backend load failed, using local storage:', e.message);
+        try{ folders  = JSON.parse(localStorage.getItem(META_KEY(email))||'{}') }catch{ folders={}; }
+        try{ rootKeys = JSON.parse(localStorage.getItem(ROOTS_KEY(email))||'[]') }catch{ rootKeys=[]; }
+        try{ fileStore= JSON.parse(localStorage.getItem(FILES_KEY(email))||'{}') }catch{ fileStore={}; }
+        palIdx = parseInt(localStorage.getItem(PALIDX_KEY(email))||'0');
+      }
+
+      document.getElementById('welcomeEmail').textContent = email;
+      document.getElementById('welcomeBar').style.display  = 'flex';
+      document.getElementById('privacyNotice').style.display = 'block';
+      document.getElementById('noLoginScreen').style.display = 'none';
+      // Hide the sign-in prompt banner once signed in
+      document.getElementById('signInPromptBanner').classList.remove('visible');
+      updateUploadButtons();
+      renderAccountList();
+      refresh();
+    }
+
+    /* ═══════════ ACCOUNT LIST (left panel) ═══════════ */
+    const AVATAR_COLORS = [
+      {bg:'rgba(0,245,255,.15)',border:'#00f5ff',text:'#00f5ff'},
+      {bg:'rgba(255,0,255,.15)',border:'#ff00ff',text:'#ff00ff'},
+      {bg:'rgba(0,255,136,.15)',border:'#00ff88',text:'#00ff88'},
+      {bg:'rgba(255,255,0,.15)',border:'#ffff00',text:'#ffff00'},
+      {bg:'rgba(170,68,255,.15)',border:'#aa44ff',text:'#aa44ff'},
+      {bg:'rgba(255,68,102,.15)',border:'#ff4466',text:'#ff4466'},
+    ];
+    function avatarColor(email){ return AVATAR_COLORS[Math.abs(parseInt(simpleHash(email),16))%AVATAR_COLORS.length]; }
+
+    function renderAccountList(){
+      const accs = getAccounts();
+      const list = document.getElementById('accountList');
+      list.innerHTML = accs.map(email=>{
+        const av = avatarColor(email);
+        const initials = (email[0]+(email.split('@')[0].slice(-1))).toUpperCase();
+        const isActive = email===currentUser;
+        return `<div class="account-row${isActive?' active-acc':''}" onclick="switchUser('${email.replace(/'/g,"\\'")}')">
+          <div class="acc-avatar" style="background:${av.bg};border-color:${av.border};color:${av.text}">${initials}</div>
+          <div class="acc-info">
+            <div class="acc-email">${email}</div>
+            <div class="acc-status${isActive?'':' offline'}">${isActive?'● ACTIVE':'○ CLICK TO SWITCH'}</div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function showSignIn(){
+      document.getElementById('signinEmail').value='';
+      document.getElementById('signinPass').value='';
+      document.getElementById('signinErr').textContent='';
+      document.getElementById('signinOverlay').style.display='flex';
+    }
+    function hideSignIn(){ document.getElementById('signinOverlay').style.display='none'; }
+
+    /* ═══════════ SAVE STATE ═══════════ */
+    async function syncToBackend() {
+      if (!currentUser) return;
+      try {
+        await fetch(`${API_BASE}/api/vault/save`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            email: currentUser, 
+            folders, 
+            rootKeys, 
+            fileStore, 
+            palIdx 
+          })
+        });
+      } catch (e) {
+        console.error('Backend sync failing:', e.message);
+      }
+    }
+
+    function saveState(){
+      if(!currentUser) return;
+      try{
+        localStorage.setItem(META_KEY(currentUser), JSON.stringify(folders));
+        localStorage.setItem(ROOTS_KEY(currentUser), JSON.stringify(rootKeys));
+        syncToBackend();
+      }catch(e){ showToast('⚠ SAVE FAILED','err'); }
+    }
+    function saveFiles(){
+      if(!currentUser) return;
+      try{ 
+        localStorage.setItem(FILES_KEY(currentUser), JSON.stringify(fileStore)); 
+        syncToBackend();
+      }
+      catch(e){ showToast('⚠ STORAGE FULL','err'); }
+    }
+
+    /* ═══════════ UTILS ═══════════ */
+    function fmtSize(b){ if(!b) return '0 B'; const k=1024,u=['B','KB','MB','GB'],i=Math.floor(Math.log(b)/Math.log(k)); return (b/Math.pow(k,i)).toFixed(1)+' '+u[i]; }
+    function getExt(n){ const p=n.lastIndexOf('.'); return p>-1?n.slice(p+1).toUpperCase():'FILE'; }
+    function extColor(e){ return ({JS:'#f7df1e',TS:'#3178c6',PY:'#3572a5',JAVA:'#b07219',HTML:'#e34c26',CSS:'#563d7c',JSON:'#cbcb41',MD:'#083fa1',PNG:'#aa88ff',JPG:'#ff88aa',JPEG:'#ff88aa',GIF:'#ff44aa',PDF:'#ee4444',ZIP:'#88bbee',MP4:'#44bbee',MP3:'#bbee44',WAV:'#eecc44',TXT:'#aaaaaa',CSV:'#88ff88',DOCX:'#2b6ccf',XLSX:'#1e7e45',PPTX:'#c43e1c',SVG:'#ffb900',WEBP:'#dd88ff',ICO:'#ff9966'})[e]||'#888'; }
+
+    function showToast(msg, type=''){
+      const t=document.getElementById('toast');
+      t.className=type==='err'?'err':'';
+      t.textContent=msg; t.classList.add('show');
+      clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),3000);
+    }
+
+    /* ═══════════ FOLDER TREE ═══════════ */
+    function ensureFolder(parts){
+      for(let d=0;d<parts.length;d++){
+        const key=parts.slice(0,d+1).join('/');
+        const parent=d===0?null:parts.slice(0,d).join('/');
+        if(!folders[key]){
+          folders[key]={label:parts[d],path:key,parent,files:[],children:[],palette:nextPal()};
+          if(d===0&&!rootKeys.includes(key)) rootKeys.push(key);
+          if(parent&&folders[parent]&&!folders[parent].children.includes(key))
+            folders[parent].children.push(key);
+        }
+      }
+      return parts.join('/');
+    }
+
+    function readAsDataURL(file){
+      return new Promise(res=>{ const r=new FileReader(); r.onload=e=>res(e.target.result); r.readAsDataURL(file); });
+    }
+
+    /* ═══════════ UPLOAD HANDLERS ═══════════ */
+    async function handleLooseFiles(e){
+      if(!currentUser){ e.target.value=''; showSignIn(); return; }
+      const files=Array.from(e.target.files); e.target.value='';
+      if(!files.length) return;
+      const key=ensureFolder(['Uploads']);
+      for(const f of files){
+        const data=await readAsDataURL(f);
+        const fKey=key+'/'+f.name;
+        fileStore[fKey]=data;
+        if(!folders[key].files.find(x=>x.name===f.name))
+          folders[key].files.push({name:f.name,size:f.size,ext:getExt(f.name),storeKey:fKey});
+      }
+      saveState(); saveFiles(); refresh();
+      showToast('✓ '+files.length+' FILE(S) UPLOADED');
+    }
+
+    async function handleFolderUpload(e){
+      if(!currentUser){ e.target.value=''; showSignIn(); return; }
+      const files=Array.from(e.target.files); e.target.value='';
+      if(!files.length) return;
+      showToast('⏳ READING FILES…');
+      for(const f of files){
+        const rel=f.webkitRelativePath||f.name;
+        const parts=rel.split('/');
+        let folderParts, fileName;
+        if(parts.length===1){ folderParts=['Uploads']; fileName=f.name; }
+        else{ folderParts=parts.slice(0,parts.length-1); fileName=parts[parts.length-1]; }
+        const key=ensureFolder(folderParts);
+        const data=await readAsDataURL(f);
+        const fKey=key+'/'+fileName;
+        fileStore[fKey]=data;
+        if(!folders[key].files.find(x=>x.name===fileName))
+          folders[key].files.push({name:fileName,size:f.size,ext:getExt(fileName),storeKey:fKey});
+      }
+      saveState(); saveFiles(); refresh();
+      showToast('✓ FOLDER UPLOADED');
+    }
+
+    /* ═══════════ DELETE ═══════════ */
+    let pendingDeleteKey=null;
+    function deleteSubtree(key){
+      const f=folders[key]; if(!f) return;
+      f.children.forEach(ck=>deleteSubtree(ck));
+      f.files.forEach(file=>{ if(file.storeKey) delete fileStore[file.storeKey]; });
+      if(f.parent&&folders[f.parent]) folders[f.parent].children=folders[f.parent].children.filter(c=>c!==key);
+      delete folders[key];
+      rootKeys=rootKeys.filter(k=>k!==key);
+    }
+    function askDelete(key){
+      const f=folders[key]; if(!f) return;
+      pendingDeleteKey=key;
+      function countFiles(k){ const n=folders[k]; return n?(n.files.length+n.children.reduce((s,c)=>s+countFiles(c),0)):0; }
+      const total=countFiles(key);
+      document.getElementById('confirmName').textContent=f.label.toUpperCase();
+      document.getElementById('confirmSub').textContent=`${total} file(s) · ${f.children.length} sub-folder(s) will be removed.`;
+      document.getElementById('confirmOverlay').style.display='flex';
+    }
+    function confirmDelete(){
+      if(!pendingDeleteKey) return;
+      const key=pendingDeleteKey, label=folders[key]?.label||'';
+      const card=document.querySelector(`.folder-card[data-key="${CSS.escape(key)}"]`);
+      if(card) card.classList.add('removing');
+      hideConfirm();
+      setTimeout(()=>{ deleteSubtree(key); saveState(); saveFiles(); refresh(); showToast('🗑 '+label.toUpperCase()+' REMOVED','err'); },380);
+    }
+    function hideConfirm(){ document.getElementById('confirmOverlay').style.display='none'; pendingDeleteKey=null; }
+
+    /* ═══════════ DOWNLOAD ═══════════ */
+    function downloadFolder(key){
+      const f=folders[key]; if(!f) return;
+      function collectFiles(k,prefix){
+        const node=folders[k]; if(!node) return[];
+        const res=node.files.map(file=>({...file,downloadPath:prefix+'/'+file.name}));
+        node.children.forEach(ck=>res.push(...collectFiles(ck,prefix+'/'+folders[ck].label)));
+        return res;
+      }
+      const allFiles=collectFiles(key,f.label);
+      if(!allFiles.length){ showToast('NO FILES TO DOWNLOAD','err'); return; }
+      allFiles.forEach((file,i)=>{
+        const data=fileStore[file.storeKey]; if(!data) return;
+        setTimeout(()=>{ const a=document.createElement('a'); a.href=data; a.download=file.name; a.click(); },i*200);
+      });
+      showToast('⬇ DOWNLOADING '+allFiles.length+' FILE(S)');
+    }
+    function downloadFile(storeKey,name){
+      const data=fileStore[storeKey];
+      if(!data){ showToast('FILE DATA NOT AVAILABLE','err'); return; }
+      const a=document.createElement('a'); a.href=data; a.download=name; a.click();
+      showToast('⬇ '+name);
+    }
+
+    /* ═══════════ FILE PREVIEW ═══════════ */
+    function openPreview(storeKey,name,ext){
+      const data=fileStore[storeKey];
+      document.getElementById('previewName').textContent=name;
+      document.getElementById('previewDlBtn').onclick=()=>downloadFile(storeKey,name);
+      const content=document.getElementById('previewContent');
+      const imgExts=['PNG','JPG','JPEG','GIF','WEBP','SVG','ICO','BMP'];
+      const vidExts=['MP4','WEBM','OGG','MOV'];
+      const audExts=['MP3','WAV','OGG','AAC','FLAC','M4A'];
+      const txtExts=['TXT','MD','JS','TS','HTML','CSS','JSON','CSV','XML','PY','JAVA','PHP','SH','YAML','YML','ENV','LOG','SQL','RS','GO','C','CPP','H','CS','RB','KT','SWIFT'];
+      if(!data){
+        content.innerHTML=`<div class="preview-noview"><div class="pn-icon">❌</div><p>FILE CONTENT NOT STORED<br>RE-UPLOAD TO PREVIEW</p></div>`;
+      } else if(imgExts.includes(ext)){
+        content.innerHTML=`<img class="preview-img" src="${data}" alt="${name}"/>`;
+      } else if(vidExts.includes(ext)){
+        content.innerHTML=`<video class="preview-video" controls src="${data}"></video>`;
+      } else if(audExts.includes(ext)){
+        content.innerHTML=`<div style="padding:40px 0;text-align:center"><div style="font-size:48px;margin-bottom:16px">🎵</div><audio class="preview-audio" controls src="${data}"></audio></div>`;
+      } else if(ext==='PDF'){
+        content.innerHTML=`<iframe class="preview-iframe" src="${data}"></iframe>`;
+      } else if(txtExts.includes(ext)){
+        try{
+          const base64=data.split(',')[1];
+          const text=decodeURIComponent(escape(atob(base64)));
+          const escaped=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+          content.innerHTML=`<pre class="preview-text">${escaped}</pre>`;
+        }catch{
+          content.innerHTML=`<div class="preview-noview"><div class="pn-icon">⚠</div><p>COULD NOT DECODE TEXT FILE</p></div>`;
+        }
+      } else {
+        content.innerHTML=`<div class="preview-noview"><div class="pn-icon">📄</div><p>NO PREVIEW AVAILABLE<br>FOR .${ext} FILES<br><br>USE DOWNLOAD TO OPEN</p></div>`;
+      }
+      document.getElementById('previewOverlay').style.display='flex';
+    }
+    function closePreview(){ document.getElementById('previewOverlay').style.display='none'; document.getElementById('previewContent').innerHTML=''; }
+
+    /* ═══════════ STATS + RENDER ═══════════ */
+    function refresh(){ updateStats(); renderGrid(document.getElementById('searchInput').value.trim()); }
+    function updateStats(){
+      let totalF=0,totalS=0;
+      Object.values(folders).forEach(f=>f.files.forEach(x=>{ totalF++; totalS+=x.size||0; }));
+      document.getElementById('statFolders').textContent=rootKeys.length;
+      document.getElementById('statFiles').textContent=totalF;
+      document.getElementById('statSize').textContent=fmtSize(totalS);
+    }
+    function renderGrid(query=''){
+      const grid=document.getElementById('grid');
+      if(!rootKeys.length){
+        grid.innerHTML=`<div class="empty-state"><div class="big">🗂</div><p>${currentUser?'UPLOAD FILES OR FOLDERS\nTO BEGIN YOUR VAULT':'SIGN IN TO GET STARTED'}</p></div>`;
+        return;
+      }
+      let keys=[...rootKeys];
+      if(query){ const q=query.toLowerCase(); keys=[...keys.filter(k=>folders[k]?.label.toLowerCase().includes(q)),...keys.filter(k=>!folders[k]?.label.toLowerCase().includes(q))]; }
+      grid.innerHTML=keys.filter(k=>folders[k]).map((key,i)=>{
+        const f=folders[key],p=f.palette;
+        const hl=query&&f.label.toLowerCase().includes(query.toLowerCase());
+        const esc=key.replace(/'/g,"\\'");
+        return `<div class="folder-card${hl?' highlight':''}" data-key="${key.replace(/"/g,'&quot;')}"
+          style="--accent:${p.glow};animation-delay:${(i*.055).toFixed(2)}s"
+          onclick="openFolder('${esc}')">
+          <div class="folder-icon-wrap" style="--icon-glow:${p.glow}">
+            <svg viewBox="0 0 64 56" fill="none">
+              <path d="M4 14C4 10.686 6.686 8 10 8H24L30 14H54C57.314 14 60 16.686 60 20V46C60 49.314 57.314 52 54 52H10C6.686 52 4 49.314 4 46V14Z" fill="${p.bg}" stroke="${p.icon}" stroke-width="1.5"/>
+              <path d="M4 22H60V46C60 49.314 57.314 52 54 52H10C6.686 52 4 49.314 4 46V22Z" fill="${p.bg}" stroke="${p.icon}" stroke-width="1" opacity="0.5"/>
+              <circle cx="32" cy="37" r="5" fill="${p.icon}" opacity="0.3"/>
+              <circle cx="32" cy="37" r="2.5" fill="${p.icon}"/>
+            </svg>
+          </div>
+          <div class="folder-name">${f.label}</div>
+          <div class="file-count"><span>${f.files.length}</span> FILES</div>
+          ${f.children.length?`<span class="sub-badge">📂 ${f.children.length} SUB-FOLDER${f.children.length>1?'S':''}</span>`:''}
+          <div class="color-bar" style="--bar1:${p.bar1};--bar2:${p.bar2}"></div>
+          <div class="rclick-hint">RIGHT-CLICK FOR OPTIONS</div>
+        </div>`;
+      }).join('');
+    }
+
+    /* ═══════════ FOLDER MODAL ═══════════ */
+    function openFolder(key){
+      const f=folders[key]; if(!f) return;
+      document.getElementById('modalTitle').textContent='📁 '+f.label.toUpperCase();
+      document.getElementById('modalPath').textContent='📍 '+f.path.replace(/\//g,' › ');
+      let html='';
+      if(f.parent){ const pEsc=f.parent.replace(/'/g,"\\'"); html+=`<div class="back-btn" onclick="openFolder('${pEsc}')">← BACK TO ${folders[f.parent]?.label.toUpperCase()}</div>`; }
+      if(f.children.length){
+        html+=`<div class="section-label">📂 SUB-FOLDERS — ${f.children.length}</div>`;
+        html+=f.children.filter(ck=>folders[ck]).map((ck,i)=>{
+          const cf=folders[ck],esc=ck.replace(/'/g,"\\'");
+          return `<div class="subfolder-item" style="animation-delay:${(i*.05).toFixed(2)}s" onclick="event.stopPropagation();openFolder('${esc}')">
+            <span style="font-size:17px">📂</span>
+            <span class="sf-name">${cf.label}</span>
+            <span class="sf-count">${cf.files.length} FILES${cf.children.length?' · '+cf.children.length+' SUB':''}</span>
+          </div>`;
+        }).join('');
+      }
+      html+=`<div class="section-label">📄 FILES IN THIS FOLDER — ${f.files.length}</div>`;
+      if(!f.files.length){
+        html+=`<div class="no-files">NO FILES DIRECTLY IN THIS FOLDER</div>`;
+      } else {
+        html+=`<div class="file-list">${f.files.map((file,i)=>{
+          const c=extColor(file.ext);
+          return `<div class="file-item" style="animation-delay:${(i*.04).toFixed(2)}s"
+            data-storekey="${(file.storeKey||'').replace(/"/g,'&quot;')}"
+            data-filename="${file.name.replace(/"/g,'&quot;')}"
+            data-ext="${file.ext}"
+            onclick="handleFileClick(this)">
+            <span class="file-type-badge" style="background:${c}22;color:${c};border:1px solid ${c}44">${file.ext}</span>
+            <span class="file-name">${file.name}</span>
+            <span class="file-size">${fmtSize(file.size)}</span>
+            ${!!fileStore[file.storeKey]?`<button class="file-dl-btn" onclick="event.stopPropagation();handleDownloadClick(this.parentElement)" title="Download">⬇</button>`:''}
+          </div>`;
+        }).join('')}</div>`;
+      }
+      document.getElementById('modalBody').innerHTML=html;
+      document.getElementById('modalOverlay').style.display='flex';
+    }
+    function handleFileClick(el){ openPreview(el.dataset.storekey, el.dataset.filename, el.dataset.ext); }
+    function handleDownloadClick(el){ downloadFile(el.dataset.storekey, el.dataset.filename); }
+    function overlayClick(e){ if(e.target===document.getElementById('modalOverlay')) closeModal(); }
+    function closeModal(){ document.getElementById('modalOverlay').style.display='none'; }
+    function handleSearch(){ renderGrid(document.getElementById('searchInput').value.trim()); }
+
+    /* ═══════════ RIGHT-CLICK MENU ═══════════ */
+    let ctxTargetKey=null;
+    const ctxMenu=document.getElementById('ctxMenu');
+    document.addEventListener('contextmenu',e=>{
+      const card=e.target.closest('.folder-card');
+      if(!card){ hideCtx(); return; }
+      e.preventDefault();
+      ctxTargetKey=card.dataset.key;
+      const mx=e.clientX,my=e.clientY,mw=200,mh=110;
+      ctxMenu.style.left=(mx+mw>innerWidth?mx-mw:mx)+'px';
+      ctxMenu.style.top=(my+mh>innerHeight?my-mh:my)+'px';
+      ctxMenu.style.display='block';
+    });
+    document.addEventListener('click',e=>{ if(!ctxMenu.contains(e.target)) hideCtx(); });
+    document.addEventListener('scroll',hideCtx,true);
+    document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ hideCtx(); hideConfirm(); closeModal(); closePreview(); hideSignIn(); } });
+    function hideCtx(){ ctxMenu.style.display='none'; }
+    document.getElementById('ctxOpen').onclick=()=>{ if(ctxTargetKey){hideCtx();openFolder(ctxTargetKey);} };
+    document.getElementById('ctxDownload').onclick=()=>{ if(ctxTargetKey){hideCtx();downloadFolder(ctxTargetKey);} };
+    document.getElementById('ctxDelete').onclick=()=>{ if(ctxTargetKey){hideCtx();askDelete(ctxTargetKey);} };
+
+    /* ═══════════ INIT ═══════════ */
+    (function init(){
+      renderAccountList();
+      const active=localStorage.getItem(ACTIVE_KEY);
+      if(active && getAccounts().includes(active)){
+        switchUser(active);
+      } else {
+        document.getElementById('noLoginScreen').style.display='flex';
+        updateUploadButtons();
+        refresh();
+      }
+      ['signinEmail','signinPass'].forEach(id=>{
+        document.getElementById(id).addEventListener('keydown',e=>{ if(e.key==='Enter') doSignIn(); });
+      });
+    })();
+
+    /* ═══════════ PARTICLES ═══════════ */
+    (function(){
+      const cv=document.getElementById('particles'),ctx=cv.getContext('2d');
+      let W,H,pts=[];
+      function resize(){ W=cv.width=innerWidth; H=cv.height=innerHeight; }
+      resize(); window.addEventListener('resize',resize);
+      const C=['#00f5ff','#ff00ff','#ffff00','#00ff88','#aa44ff','#ff4466'];
+      for(let i=0;i<65;i++) pts.push({x:Math.random(),y:Math.random(),r:Math.random()*1.5+.3,vx:(Math.random()-.5)*.00018,vy:(Math.random()-.5)*.00018,c:C[Math.floor(Math.random()*C.length)],a:Math.random()*Math.PI*2,as:.005+Math.random()*.01});
+      function draw(){
+        ctx.clearRect(0,0,W,H);
+        pts.forEach(p=>{
+          p.x+=p.vx; p.y+=p.vy; p.a+=p.as;
+          if(p.x<0)p.x=1; if(p.x>1)p.x=0; if(p.y<0)p.y=1; if(p.y>1)p.y=0;
+          ctx.globalAlpha=.2+.18*Math.sin(p.a); ctx.fillStyle=p.c;
+          ctx.beginPath(); ctx.arc(p.x*W,p.y*H,p.r,0,Math.PI*2); ctx.fill();
+        });
+        ctx.globalAlpha=1; requestAnimationFrame(draw);
+      }
+      draw();
+    })();
+  </script>
+</body>
+</html>
