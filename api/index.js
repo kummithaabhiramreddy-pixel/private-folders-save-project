@@ -31,7 +31,7 @@ async function initDB() {
 }
 initDB();
 
-app.get('/api/files', async (req, res) => {
+app.get(['/api/files', '/files', '/'], async (req, res) => {
     const email = req.query.email;
     if (!email) return res.status(400).json({ error: 'Email required' });
     try {
@@ -52,7 +52,7 @@ app.get('/api/files', async (req, res) => {
     }
 });
 
-app.post('/api/files', async (req, res) => {
+app.post(['/api/files', '/files', '/'], async (req, res) => {
     const { email, file } = req.body;
     if (!email || !file) return res.status(400).json({ error: 'Missing data' });
     try {
@@ -66,7 +66,7 @@ app.post('/api/files', async (req, res) => {
     }
 });
 
-app.delete('/api/files/:id', async (req, res) => {
+app.delete(['/api/files/:id', '/files/:id', '/:id'], async (req, res) => {
     const id = req.params.id;
     try {
         await pool.query('DELETE FROM user_files WHERE id = $1', [id]);
